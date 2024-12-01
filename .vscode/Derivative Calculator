@@ -1,0 +1,86 @@
+data MathExpr a =
+    X
+  | Coef a
+  | Add (MathExpr a) (MathExpr a)
+  | Mult (MathExpr a) (MathExpr a)
+  | Power (MathExpr a) Int
+  | Cos (MathExpr a)
+  | Sin (MathExpr a)
+  | Abs (MathExpr a)
+  deriving (Eq,Show,Read)
+
+eval :: (Floating a, Eq a) => MathExpr a -> a -> a
+eval (Const c) _ = c                      -- Evaluate constant
+eval Var v = v                            -- Substitute variable
+eval (Add e1 e2) v = eval e1 v + eval e2 v  -- Evaluate addition
+eval (Mul e1 e2) v = eval e1 v * eval e2 v  -- Evaluate multiplication
+eval (Sub e1 e2) v = eval e1 v - eval e2 v  -- Evaluate subtraction
+eval (Div e1 e2) v =
+    let denominator = eval e2 v
+    in if denominator == 0
+       then error "Division by zero"
+       else eval e1 v / denominator   
+eval (Pow e1 e2) v = eval e1 v ^^ round (eval e2 v)  
+
+instance Num a => Num (MathExpr a) where
+  x + y         = Add x y                   
+  x * y         = Mul x y                   
+  negate x      = Sub (Const 0) x          
+  abs x         = error "abs is not implemented for symbolic expressions" 
+  fromInteger i = Const (fromInteger i)   
+  signum _      = error "signum is left unimplemented"
+
+instance Fractional a => Fractional (MathExpr a) where
+  recip e        = Div (Const 1) e           
+  fromRational r = Const (fromRational r)    
+
+instance Floating a => Floating (MathExpr a) where
+  pi = Coef pi
+  sin (Sin u0) = Sin u0
+  sin u0 = Sin u0
+  cos (Cos u0) = Cos u0
+  cos u0 = Cos u0
+  log (Log u0) = Log u0
+  log u0 = Log u0
+  asin (Asin u0) = Asin u0
+  asin u0 = Asin u0
+  acos (Acos u0) = Acos u0
+  acos u0 = Acos u0
+  atan (Atan u0) = Atan u0
+  atan u0 = Atan u0
+  sinh (Sinh u0) = Sinh u0
+  sinh u0 = Sinh u0
+  cosh (Cosh u0) = Cosh u0
+  cosh u0 = Cosh u0
+  tanh (Tanh u0) = Tanh u0
+  tanh u0 = Tanh u0
+  asinh (Asinh u0) = Asinh u0
+  asinh u0 = Asinh u0
+  acosh (Acosh u0) = Acosh u0
+  acosh u0 = Acosh u0
+  atanh (Atanh u0) = Atanh u0
+  atanh u0 = Atanh u0
+  exp (Exp u0) = Exp u0
+  exp u0 = Exp u0
+  sqrt (Sqrt u0) = Sqrt u0
+  sqrt u0 = Sqrt u0
+
+diff :: (Floating a, Eq a) => MathExpr a -> MathExpr a
+diff X = Coef 1   
+diff (Coef _) = Coef 0  -- Derivative of a constant is 0
+diff (Add u0 u1) = Add (diff u0) (diff u1)  -- Sum rule
+diff (Mult u0 u1) = Add (Mult (diff u0) u1) (Mult u0 (diff u1))  -- Product rule
+diff (Power u0 d) = Mult (Coef (fromIntegral d)) (Mult (Power u0 (d - 1)) (diff u0))  -- Power rule
+diff (Sin u0) = Mult (Cos u0) (diff u0)  -- Chain rule for sin
+diff (Cos u0) = Mult (Coef (-1)) (Mult (Sin u0) (diff u0))  -- Chain rule for cos
+diff (Abs u0) = Mult (Abs (diff u0)) (Coef 1)  -- Chain rule for abs
+
+pretty :: (Show a) => MathExpr a -> String
+pretty X = "X"
+pretty (Coef c) = "(" ++ show c ++ ")"
+pretty (Add u0 u1) = "(" ++ pretty u0 ++ " + " ++ pretty u1 ++ ")"
+pretty (Mult u0 u1) = "(" ++ pretty u0 ++ " * " ++ pretty u1 ++ ")"
+pretty (Power u0 d) = "(" ++ pretty u0 ++ " ^^ (" ++ show d ++ "))"
+pretty (Cos u0) = "cos(" ++ pretty u0 ++ ")"
+pretty (Sin u0) = "sin(" ++ pretty u0 ++ ")"
+pretty (Abs u0) = "abs(" ++ pretty u0 ++ ")"
